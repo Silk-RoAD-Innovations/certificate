@@ -8,3 +8,4 @@ Run this command:
 ## Screenshots
 
 <img width=400px alt=Certificate screenshot src=https://github.com/Silk-RoAD-Innovations/certificate/assets/96925396/544c24a0-2488-4305-b093-a3700d07a3dc>
+<img width=400px alt=Certificate screenshot src=https://github.com/Silk-RoAD-Innovations/certificate/assets/96925396/278caaa5-a6e2-47e8-94b0-13e5f06fd6f1>
