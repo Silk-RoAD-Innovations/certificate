@@ -12,10 +12,13 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 # custom font (to support Russian)
-pdfmetrics.registerFont(TTFont('ArialUnicode', 'ARIALUNI.TTF'))
+module_directory = os.path.dirname(os.path.abspath(__file__))
+font_path = os.path.join(module_directory, 'ARIALUNI.TTF')
+
+pdfmetrics.registerFont(TTFont('ArialUnicode', font_path))
 styles = getSampleStyleSheet()
 normal_style = styles['Normal']
 custom_style = ParagraphStyle(
