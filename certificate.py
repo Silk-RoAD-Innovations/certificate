@@ -11,8 +11,9 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Image, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.utils import ImageReader
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"
 
 # custom font (to support Russian)
 module_directory = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +30,10 @@ custom_style = ParagraphStyle(
     fontSize=10
 )
     
+def calculate_height(original_width, original_height, target_width):
+    '''Function to calculate the height maintaining the original aspect ratio'''
+    aspect_ratio = original_width / original_height
+    return target_width / aspect_ratio
 
 def add_spacer(height=12):
     return Spacer(1, height)
@@ -93,9 +98,7 @@ class CertificateGenerator:
 
     def _add_image_paragraph(self, text, image_path, target_width=80):
         img = Image(image_path, width=target_width, height=target_width)
-        aspect_ratio = img.imageWidth / img.imageHeight
-
-        adjusted_height = target_width / aspect_ratio
+        adjusted_height = calculate_height(img.imageWidth, img.imageHeight, target_width)
 
         image_text = f"<font size=10 color=black>{text} <img src='{image_path}' width='{target_width}' height='{adjusted_height}'/></font>"
         return add_paragraph(image_text)
@@ -213,10 +216,7 @@ class CertificateGenerator2:
 
     def _add_image_paragraph(self, text, image_path, target_width=80):
         img = Image(image_path, width=target_width, height=target_width)
-        aspect_ratio = img.imageWidth / img.imageHeight
-
-        adjusted_height = target_width / aspect_ratio
-
+        adjusted_height = calculate_height(img.imageWidth, img.imageHeight, target_width)
         image_text = f"<font size=10 color=black>{text} <img src='{image_path}' width='{target_width}' height='{adjusted_height}'/></font>"
         return add_paragraph(image_text)
 
@@ -269,6 +269,114 @@ class CertificateGenerator2:
 
         self.doc.build(content, onFirstPage=lambda canvas, doc: self._draw_seal(canvas, doc, self.seal_image_path))
 
+class CertificateGenerator3:
+    def __init__(self, file_path: str, ministry: str, university: str, university_address: str, full_name: str, birthday: str,
+                 year_of_admission: str, faculty_name: str, date_of_admission_dd_mm_yyyy: str, order_number: str, course_num: str,
+                 type_of_study_ru: Literal["очного", "заочного"], license: str, year_of_license: str, year_of_finish_yyyy_mm: str,
+                 district: str, seal_image_path: str, signature1_path: str, signature2_path: str, signature3_path: str) -> None:
+        '''
+        - file_path: The file path where the generated certificate PDF will be saved.
+        - ministry: Official name of the ministry.
+        - university: University name issuing this certificate.
+        - university_address: University address.
+        - full_name: Full name of the student.
+        - birthday: Birthday of the student (format: DD.MM.YYYY).
+        - year_of_admission: Year of admission to the university.
+        - faculty_name: Name of the faculty.
+        - date_of_admission_dd_mm_yyyy: Date of admission (format: DD.MM.YYYY).
+        - order_number: Order number.
+        - course_num: Course number.
+        - type_of_study_ru: Type of study in Russian. (e.g., "очного" for offline study, "заочного" for online study).
+        - license: License number of uinversity.
+        - year_of_license: Year when the license was issued.
+        - year_of_finish_yyyy_mm: Year and month of finishing the education (format: YYYY-MM).
+        - district: Your military's district.
+        - seal_image_path: Path to seal image.
+        - signature1_path: Path to signature1 image.
+        - signature2_path: Path to signature2 image.
+        - signature3_path: Path to signature3 image.
+        '''
+        self.file_path = file_path
+        self.ministry = ministry
+        self.university = university
+        self.university_address = university_address
+        self.full_name = full_name
+        self.birthday = birthday
+        self.year_of_admission = year_of_admission
+        self.faculty_name = faculty_name
+        self.date_of_admission_dd_mm_yyyy = date_of_admission_dd_mm_yyyy
+        self.order_number = order_number
+        self.course_num = course_num
+        self.type_of_study_ru = type_of_study_ru
+        if self.type_of_study_ru == "очного":
+            self.type_of_study_kg = "күндүзгү"
+        else:
+            self.type_of_study_kg = "кечки (сырттан окуу)"
+
+        self.license = license
+        self.year_of_license = year_of_license
+        self.year_of_finish_yyyy_mm = year_of_finish_yyyy_mm
+        self.district = district
+        self.seal_image_path = seal_image_path
+        self.signature1_path = signature1_path
+        self.signature2_path = signature2_path
+        self.signature3_path = signature3_path
+
+        self.doc = SimpleDocTemplate(self.file_path, pagesize=letter)
+
+    def _draw_seal(self, canvas, doc):
+        # Drawing the seal and the signatures
+        seal_width = 100
+        seal_height = 100
+
+        # Draw the seal image on the canvas
+        canvas.drawImage(self.seal_image_path, doc.width - seal_width - 25, 300, width=seal_width, height=seal_height)
+
+        # Draw the three signatures with transparent backgrounds
+        signature_width = 80
+
+        # Draw the first signature
+        signature1_height = calculate_height(*ImageReader(self.signature1_path).getSize(), signature_width)
+        canvas.drawImage(self.signature1_path, 100, 430, width=signature_width, height=signature1_height, mask='auto')
+
+        # Draw the second signature
+        signature2_height = calculate_height(*ImageReader(self.signature2_path).getSize(), signature_width)
+        canvas.drawImage(self.signature2_path, 200, 430, width=signature_width, height=signature2_height, mask='auto')
+
+        # Draw the third signature
+        signature3_height = calculate_height(*ImageReader(self.signature3_path).getSize(), signature_width)
+        canvas.drawImage(self.signature3_path, 300, 430, width=signature_width, height=signature3_height, mask='auto')
+
+    def generate_certificate(self) -> None:
+        content = []
+
+        # Add title
+        title_text = f"{self.ministry}<br/>{self.university}<br/>{self.university_address}"
+        content.append(add_paragraph(title_text))
+
+        # Add certificate text
+        certificate_text = f"<font size=20 color=black>МААЛЫМКАТ / СПРАВКА<br/><br/></font>" \
+                           f"<font size=15>Чакыралуучу (Выдана призывнику) (аты-жөнү / фамилия, имя, отчество): {self.full_name}<br/></font>" \
+                           f"{self.birthday} - жылы туулган, себеби ал {self.year_of_admission} - жылы {self.university}<br/>" \
+                           f"(Окуу жайынын толук аты / Полное наименование образовательной организации): {self.faculty_name}<br/>" \
+                           f"{self.date_of_admission_dd_mm_yyyy} жыл №{self.order_number} буйругу менен кабыл алынган.<br/>" \
+                           f"(Зачислен приказом №{self.order_number} от {self.date_of_admission_dd_mm_yyyy} года.)<br/>" \
+                           f"жана азыркы убакта {self.course_num} курста (класста) {self.type_of_study_kg} бөлүмүндө окуп жатат.<br/>" \
+                           f"и в настоящее время обучается на {self.course_num} курсе (классе) {self.type_of_study_ru} отделения.<br/>" \
+                           f"Билим берүү мекемесинин лицензиясы (аккредитациясы) №{self.license} {self.year_of_license} жылы берилген.<br/>" \
+                           f"Лицензия (аккредитация) образовательной организации выдана.<br/>" \
+                           f"Окуу жайын {self.year_of_finish_yyyy_mm} аяктайт Срок окончания учебного заведения<br/>" \
+                           f"Маалымкат {self.district} райондук (шаардык) аскер комиссариатына көрсөтүү үчүн берилген.<br/>" \
+                           f"Справка выдана для предоставления в районный (городской) военный комиссариат<br/>" \
+                           f"<br/><br/>" \
+                           f"М.П.______________________________________________________________________________<br/>" \
+                           f"(окуу жайнын жетекчисинин же орун басарынын колу / Подпись руководителя образовательной организации)<br/>" \
+                           f"(Форма №26)"
+
+        content.append(add_paragraph(certificate_text))
+
+        self.doc.build(content, onFirstPage=lambda canvas, doc: self._draw_seal(canvas, doc))
+
 if __name__ == "__main__":
 #--------------------------------------------------------------------
 
@@ -286,7 +394,7 @@ if __name__ == "__main__":
         course_num=3,
         certificate_num="1-1111-11111111-1", # Unique number for every certificate
         dean_signature_path=os.path.join("test_images","signature.png"),
-        secretary_signature_path=os.path.join("test_images","signature1.png"),
+        secretary_signature_path=os.path.join("test_images","signature2.png"),
         seal_image_path=os.path.join("test_images","seal.jpg"),
         ministry="МИНИСТЕРСТВО ОБРАЗОВАНИЯ И НАУКИ СТРАНЫ",
         university_name="Университет Silk Road Innovations"
@@ -325,12 +433,40 @@ if __name__ == "__main__":
 
         project_authority_name="ФИО",
         project_authority_role="Проектор по УР",
-        project_authority_sign_path=os.path.join("test_images", "signature1.png"),
+        project_authority_sign_path=os.path.join("test_images", "signature2.png"),
         ministry="МИНИСТЕРСТВО ОБРАЗОВАНИЯ И НАУКИ СТРАНЫ",
         university_name="Университет Silk Road Innovations",
         seal_image_path=os.path.join("test_images", "seal.jpg"),
         semesters=semesters_data
     )
     generator2.generate_certificate()
+
+#--------------------------------------------------------------------
+
+    # Certificate3 | Example usage
+    # Example usage:
+    generator3 = CertificateGenerator3(
+    file_path='certificate3.pdf',
+    ministry="МИНИСТЕРСТВО ОБРАЗОВАНИЯ И НАУКИ СТРАНЫ",
+    university="Университет Silk Road Innovations",
+    university_address="Адресс университета",
+    full_name="Имя Фамилия Отчество",
+    birthday="01.01.2000",
+    year_of_admission="2021",
+    faculty_name="ИКТиИИ",
+    date_of_admission_dd_mm_yyyy="01.09.2021",
+    order_number="123",
+    course_num="3",
+    type_of_study_ru="очного",
+    license="AL317",
+    year_of_license="2004",
+    year_of_finish_yyyy_mm="2025.05",
+    district="Voenkomat's district",
+    seal_image_path=os.path.join("test_images", "seal.jpg"),
+    signature1_path=os.path.join("test_images", "signature.png"),
+    signature2_path=os.path.join("test_images", "signature2.png"),
+    signature3_path=os.path.join("test_images", "signature3.png"),
+    )
+    generator3.generate_certificate()
 
 #--------------------------------------------------------------------
